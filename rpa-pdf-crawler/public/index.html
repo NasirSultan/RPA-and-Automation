@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RPA PDF Crawler</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #22263a;
+      --accent: #6c63ff;
+      --accent2: #00d4aa;
+      --danger: #ff4d6d;
+      --text: #e8eaf6;
+      --muted: #8892a4;
+      --border: #2e3350;
+      --success: #00d4aa;
+      --warn: #f59e0b;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 24px;
+    }
+
+    .header {
+      display: flex; align-items: center; gap: 16px;
+      margin-bottom: 32px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .header-icon {
+      width: 48px; height: 48px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px;
+    }
+
+    h1 { font-size: 1.8rem; font-weight: 700; }
+    h1 span { color: var(--accent2); }
+    .subtitle { color: var(--muted); font-size: 0.9rem; }
+
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+    }
+
+    .card-title {
+      font-size: 1rem; font-weight: 600;
+      color: var(--accent2);
+      margin-bottom: 20px;
+      display: flex; align-items: center; gap: 8px;
+    }
+
+    label { display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 6px; }
+
+    input, select {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      margin-bottom: 16px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input:focus, select:focus { border-color: var(--accent); }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 11px 24px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-size: 0.95rem;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+    .btn-primary { background: linear-gradient(135deg, var(--accent), #8b5cf6); color: #fff; }
+    .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-danger:hover { opacity: 0.9; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 10px; border-radius: 999px;
+      font-size: 0.78rem; font-weight: 600;
+    }
+    .badge-success { background: rgba(0,212,170,0.15); color: var(--success); }
+    .badge-warn { background: rgba(245,158,11,0.15); color: var(--warn); }
+    .badge-danger { background: rgba(255,77,109,0.15); color: var(--danger); }
+
+    .timing-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+      margin: 16px 0;
+    }
+    .timing-box {
+      background: var(--surface2);
+      border-radius: 10px;
+      padding: 12px;
+      text-align: center;
+    }
+    .timing-box .val { font-size: 1.4rem; font-weight: 700; color: var(--accent2); }
+    .timing-box .lbl { font-size: 0.75rem; color: var(--muted); margin-top: 4px; }
+
+    .perf-bar-wrap {
+      background: var(--surface2);
+      border-radius: 999px;
+      height: 10px;
+      overflow: hidden;
+      margin: 8px 0;
+    }
+    .perf-bar {
+      height: 100%;
+      border-radius: 999px;
+      transition: width 0.6s ease;
+    }
+    .perf-bar.good { background: linear-gradient(90deg, var(--accent2), #00b894); }
+    .perf-bar.ok { background: linear-gradient(90deg, var(--warn), #f39c12); }
+    .perf-bar.bad { background: linear-gradient(90deg, var(--danger), #c0392b); }
+
+    .pdf-list { list-style: none; }
+    .pdf-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 12px;
+      background: var(--surface2);
+      border-radius: 8px;
+      margin-bottom: 8px;
+      gap: 12px;
+    }
+    .pdf-item .name { font-size: 0.85rem; word-break: break-all; flex: 1; }
+    .pdf-item .size { font-size: 0.8rem; color: var(--muted); white-space: nowrap; }
+    .pdf-item a { color: var(--accent2); text-decoration: none; font-size: 0.82rem; white-space: nowrap; }
+    .pdf-item a:hover { text-decoration: underline; }
+
+    .log-box {
+      background: #0a0c14;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px;
+      font-family: 'Cascadia Code', 'Consolas', monospace;
+      font-size: 0.8rem;
+      line-height: 1.7;
+      color: #a8b4c8;
+      max-height: 260px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+    }
+
+    .spinner {
+      width: 20px; height: 20px;
+      border: 2px solid rgba(255,255,255,0.2);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: none;
+    }
+    .spinner.active { display: inline-block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .status-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--success);
+      display: inline-block;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+    #result-section { display: none; }
+    .section-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-icon">🤖</div>
+  <div>
+    <h1>RPA PDF <span>Crawler</span></h1>
+    <div class="subtitle">Automated PDF extraction via Playwright + Node.js</div>
+  </div>
+  <div style="margin-left:auto; display:flex; align-items:center; gap:8px;">
+    <span class="status-dot"></span>
+    <span style="color:var(--muted); font-size:0.85rem;">Server Online</span>
+  </div>
+</div>
+
+<div class="grid">
+  <!-- LEFT: Crawl Config -->
+  <div>
+    <div class="card" style="margin-bottom:24px;">
+      <div class="card-title">⚙️ Crawl Configuration</div>
+
+      <label>Target Website URL</label>
+      <input id="targetUrl" type="url"
+        placeholder="https://abr.business.gov.au"
+        value="https://abr.business.gov.au" />
+
+      <label>Address / Search Query</label>
+      <input id="address" type="text"
+        placeholder="e.g. 123 Main Street, Sydney NSW 2000" />
+
+      <label>Browser Mode</label>
+      <select id="headless">
+        <option value="true">Headless (faster)</option>
+        <option value="false">Visible (for debugging)</option>
+      </select>
+
+      <button class="btn btn-primary" id="crawlBtn" onclick="startCrawl()">
+        <span class="spinner" id="spinner"></span>
+        <span id="btnText">🚀 Start RPA Crawl</span>
+      </button>
+    </div>
+
+    <!-- Performance Targets -->
+    <div class="card">
+      <div class="card-title">🎯 Performance Targets</div>
+      <div style="font-size:0.85rem; color:var(--muted); margin-bottom:12px;">
+        Target: ≤16s &nbsp;|&nbsp; Stretch Goal: ≤8s
+      </div>
+      <div style="display:flex; gap:12px; flex-wrap:wrap;">
+        <span class="badge badge-success">≤8s = 🏆 Stretch</span>
+        <span class="badge badge-warn">≤16s = ✅ Target</span>
+        <span class="badge badge-danger">&gt;16s = ⚠️ Over</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Results -->
+  <div>
+    <div class="card">
+      <div class="card-title">📊 Results</div>
+
+      <div id="idle-msg" style="color:var(--muted); font-size:0.9rem; text-align:center; padding:40px 0;">
+        Configure and start a crawl to see results here.
+      </div>
+
+      <div id="result-section">
+        <!-- Performance -->
+        <div style="margin-bottom:20px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+            <span style="font-size:0.85rem; color:var(--muted);">Total Time</span>
+            <span id="perf-badge" class="badge"></span>
+          </div>
+          <div class="perf-bar-wrap">
+            <div class="perf-bar" id="perf-bar" style="width:0%"></div>
+          </div>
+          <div style="text-align:center; font-size:1.6rem; font-weight:800; margin-top:8px;" id="total-time">-</div>
+        </div>
+
+        <!-- Timing breakdown -->
+        <div class="timing-grid">
+          <div class="timing-box"><div class="val" id="t-browser">-</div><div class="lbl">Browser</div></div>
+          <div class="timing-box"><div class="val" id="t-nav">-</div><div class="lbl">Navigate</div></div>
+          <div class="timing-box"><div class="val" id="t-search">-</div><div class="lbl">Search</div></div>
+          <div class="timing-box"><div class="val" id="t-extract">-</div><div class="lbl">Extract</div></div>
+          <div class="timing-box"><div class="val" id="t-dl">-</div><div class="lbl">Download</div></div>
+          <div class="timing-box"><div class="val" id="t-pdfs">-</div><div class="lbl">PDFs Found</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Activity Log -->
+<div class="card" style="margin-top:24px;">
+  <div class="section-row">
+    <div class="card-title" style="margin-bottom:0;">📋 Activity Log</div>
+    <button class="btn" style="background:var(--surface2); font-size:0.8rem; padding:6px 14px;" onclick="clearLog()">Clear</button>
+  </div>
+  <div class="log-box" id="log">Waiting for crawl to start...</div>
+</div>
+
+<!-- Downloaded PDFs -->
+<div class="card" style="margin-top:24px;">
+  <div class="section-row">
+    <div class="card-title" style="margin-bottom:0;">📄 Downloaded PDFs</div>
+    <button class="btn btn-danger" style="font-size:0.8rem; padding:6px 14px;" onclick="clearDownloads()">🗑 Clear All</button>
+  </div>
+  <ul class="pdf-list" id="pdf-list">
+    <li style="color:var(--muted); font-size:0.9rem; padding:12px 0;">No PDFs downloaded yet.</li>
+  </ul>
+</div>
+
+<script>
+  let logLines = [];
+
+  function log(msg, type = 'info') {
+    const colors = { info: '#a8b4c8', success: '#00d4aa', error: '#ff4d6d', warn: '#f59e0b' };
+    const ts = new Date().toLocaleTimeString();
+    logLines.push(`[${ts}] ${msg}`);
+    const box = document.getElementById('log');
+    box.style.color = colors[type] || colors.info;
+    box.textContent = logLines.join('\n');
+    box.scrollTop = box.scrollHeight;
+  }
+
+  function clearLog() {
+    logLines = [];
+    document.getElementById('log').textContent = 'Log cleared.';
+  }
+
+  function ms(val) {
+    return val >= 1000 ? `${(val/1000).toFixed(2)}s` : `${val}ms`;
+  }
+
+  async function startCrawl() {
+    const btn = document.getElementById('crawlBtn');
+    const spinner = document.getElementById('spinner');
+    const btnText = document.getElementById('btnText');
+
+    btn.disabled = true;
+    spinner.classList.add('active');
+    btnText.textContent = 'Crawling...';
+    document.getElementById('idle-msg').style.display = 'none';
+    document.getElementById('result-section').style.display = 'none';
+
+    const address = document.getElementById('address').value;
+    const targetUrl = document.getElementById('targetUrl').value;
+    const headless = document.getElementById('headless').value === 'true';
+
+    log(`Starting crawl: "${address}" on ${targetUrl}`);
+
+    try {
+      const res = await fetch('/api/crawl', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address, targetUrl, headless }),
+      });
+      const data = await res.json();
+
+      if (data.error) throw new Error(data.error);
+
+      const t = data.timing;
+      const totalMs = t.total;
+
+      // Timing boxes
+      document.getElementById('t-browser').textContent = ms(t.browser);
+      document.getElementById('t-nav').textContent = ms(t.navigation);
+      document.getElementById('t-search').textContent = ms(t.search);
+      document.getElementById('t-extract').textContent = ms(t.extraction);
+      document.getElementById('t-dl').textContent = ms(t.download);
+      document.getElementById('t-pdfs').textContent = data.pdfsFound.length;
+      document.getElementById('total-time').textContent = ms(totalMs);
+
+      // Perf bar
+      const pct = Math.min((totalMs / 16000) * 100, 100);
+      const bar = document.getElementById('perf-bar');
+      bar.style.width = pct + '%';
+      bar.className = `perf-bar ${totalMs <= 8000 ? 'good' : totalMs <= 16000 ? 'ok' : 'bad'}`;
+
+      // Perf badge
+      const badge = document.getElementById('perf-badge');
+      if (totalMs <= 8000) {
+        badge.textContent = '🏆 STRETCH GOAL'; badge.className = 'badge badge-success';
+      } else if (totalMs <= 16000) {
+        badge.textContent = '✅ TARGET MET'; badge.className = 'badge badge-warn';
+      } else {
+        badge.textContent = '⚠️ OVER TARGET'; badge.className = 'badge badge-danger';
+      }
+
+      document.getElementById('result-section').style.display = 'block';
+
+      log(`Crawl complete in ${ms(totalMs)} — ${data.pdfsDownloaded.length} PDFs downloaded`, 'success');
+      if (data.errors.length) log(`Errors: ${data.errors.join(', ')}`, 'error');
+
+      await loadDownloads();
+    } catch (err) {
+      log(`Error: ${err.message}`, 'error');
+      document.getElementById('idle-msg').style.display = 'block';
+    } finally {
+      btn.disabled = false;
+      spinner.classList.remove('active');
+      btnText.textContent = '🚀 Start RPA Crawl';
+    }
+  }
+
+  async function loadDownloads() {
+    const res = await fetch('/api/downloads');
+    const data = await res.json();
+    const list = document.getElementById('pdf-list');
+
+    if (!data.files || data.files.length === 0) {
+      list.innerHTML = '<li style="color:var(--muted); font-size:0.9rem; padding:12px 0;">No PDFs downloaded yet.</li>';
+      return;
+    }
+
+    list.innerHTML = data.files.map(f => `
+      <li class="pdf-item">
+        <span class="name">📄 ${f.filename}</span>
+        <span class="size">${f.sizeKB} KB</span>
+        <a href="${f.url}" target="_blank">⬇ Download</a>
+      </li>
+    `).join('');
+  }
+
+  async function clearDownloads() {
+    if (!confirm('Delete all downloaded PDFs?')) return;
+    await fetch('/api/downloads', { method: 'DELETE' });
+    log('Downloads cleared', 'warn');
+    await loadDownloads();
+  }
+
+  // Load existing downloads on page load
+  loadDownloads();
+</script>
+</body>
+</html>

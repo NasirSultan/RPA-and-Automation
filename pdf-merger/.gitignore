@@ -1,0 +1,5 @@
+node_modules/
+uploads/*.pdf
+outputs/*.pdf
+.env
+*.log

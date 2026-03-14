@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Linux Crawler — Quest 4</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&family=Syne:wght@400;600;800&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg:      #080b0f;
+      --surface: #0e1318;
+      --card:    #131920;
+      --border:  #1e2d3d;
+      --green:   #00ff9d;
+      --green2:  #00cc7a;
+      --blue:    #0af;
+      --yellow:  #ffd060;
+      --red:     #ff4757;
+      --muted:   #4a6070;
+      --text:    #c8dde8;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'JetBrains Mono', monospace;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 0;
+    }
+
+    /* Scanline overlay */
+    body::before {
+      content: '';
+      position: fixed; inset: 0; pointer-events: none; z-index: 999;
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
+    }
+
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 32px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    .logo {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.2rem; font-weight: 800;
+      color: var(--green);
+      letter-spacing: 0.1em;
+    }
+    .logo span { color: var(--text); }
+
+    .status-pill {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 0.75rem; color: var(--muted);
+    }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); animation: blink 1.5s ease-in-out infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+
+    .layout { display: grid; grid-template-columns: 320px 1fr; min-height: calc(100vh - 57px); }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      border-right: 1px solid var(--border);
+      padding: 24px 20px;
+      background: var(--surface);
+    }
+
+    .section-label {
+      font-size: 0.65rem; font-weight: 600; letter-spacing: 0.15em;
+      color: var(--muted); text-transform: uppercase;
+      margin-bottom: 12px; margin-top: 24px;
+    }
+    .section-label:first-child { margin-top: 0; }
+
+    textarea, input[type="text"] {
+      width: 100%;
+      background: var(--card);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      padding: 10px 12px;
+      border-radius: 6px;
+      outline: none;
+      resize: vertical;
+      transition: border-color 0.2s;
+    }
+    textarea:focus, input:focus { border-color: var(--green); }
+
+    .checkbox-row {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 0.82rem; color: var(--text); margin-top: 12px;
+      cursor: pointer;
+    }
+    input[type="checkbox"] { accent-color: var(--green); width: 14px; height: 14px; }
+
+    .btn {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      width: 100%; padding: 12px;
+      border: none; border-radius: 6px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem; font-weight: 600;
+      cursor: pointer; transition: all 0.15s;
+      margin-top: 12px;
+    }
+    .btn-primary {
+      background: var(--green); color: #000;
+    }
+    .btn-primary:hover { background: var(--green2); transform: translateY(-1px); }
+    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+    .btn-ghost {
+      background: transparent; color: var(--muted);
+      border: 1px solid var(--border);
+    }
+    .btn-ghost:hover { border-color: var(--blue); color: var(--blue); }
+
+    .spinner {
+      width: 14px; height: 14px;
+      border: 2px solid rgba(0,0,0,0.3);
+      border-top-color: #000;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      display: none;
+    }
+    .spinner.on { display: inline-block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Main panel ── */
+    .main { padding: 28px 32px; overflow-y: auto; }
+
+    /* Stats row */
+    .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px; }
+    .stat-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 18px;
+    }
+    .stat-card .val { font-size: 2rem; font-weight: 800; color: var(--green); }
+    .stat-card .lbl { font-size: 0.7rem; color: var(--muted); margin-top: 4px; letter-spacing: 0.08em; text-transform: uppercase; }
+
+    /* Progress */
+    .progress-wrap {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 10px; padding: 20px; margin-bottom: 28px;
+      display: none;
+    }
+    .progress-wrap.on { display: block; }
+    .progress-label { font-size: 0.8rem; color: var(--text); margin-bottom: 10px; }
+    .progress-bar-bg { background: var(--border); border-radius: 999px; height: 6px; overflow: hidden; }
+    .progress-bar { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--green), var(--blue)); transition: width 0.4s; }
+
+    /* Results table */
+    .panel {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 10px; margin-bottom: 28px; overflow: hidden;
+    }
+    .panel-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.8rem; font-weight: 600; color: var(--green);
+      letter-spacing: 0.08em;
+    }
+    .panel-body { padding: 0; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+    th {
+      text-align: left; padding: 10px 16px;
+      background: rgba(0,255,157,0.04);
+      color: var(--muted); font-weight: 600;
+      letter-spacing: 0.06em; font-size: 0.7rem; text-transform: uppercase;
+      border-bottom: 1px solid var(--border);
+    }
+    td { padding: 10px 16px; border-bottom: 1px solid rgba(30,45,61,0.5); vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(0,255,157,0.03); }
+
+    .tag {
+      display: inline-block; padding: 2px 8px; border-radius: 4px;
+      font-size: 0.7rem; font-weight: 600;
+    }
+    .tag-green { background: rgba(0,255,157,0.12); color: var(--green); }
+    .tag-red   { background: rgba(255,71,87,0.12);  color: var(--red); }
+    .tag-blue  { background: rgba(0,170,255,0.12);  color: var(--blue); }
+
+    .url-cell { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--blue); }
+    a.dl { color: var(--green); text-decoration: none; font-size: 0.72rem; }
+    a.dl:hover { text-decoration: underline; }
+
+    /* Log terminal */
+    .terminal {
+      background: #040608;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      font-size: 0.75rem;
+      line-height: 1.8;
+      color: #5a8070;
+      max-height: 300px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .terminal .ts  { color: var(--muted); }
+    .terminal .ok  { color: var(--green); }
+    .terminal .err { color: var(--red); }
+    .terminal .inf { color: var(--blue); }
+
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+      .stats-row { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">LINUX<span>CRAWLER</span> <span style="color:var(--muted);font-size:0.75rem">// Quest 4</span></div>
+  <div class="status-pill"><span class="dot"></span> Node.js + axios + cheerio</div>
+</div>
+
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="section-label">Target URLs</div>
+    <textarea id="urls" rows="6" placeholder="https://news.ycombinator.com&#10;https://quotes.toscrape.com&#10;https://example.com">https://news.ycombinator.com
+https://quotes.toscrape.com</textarea>
+
+    <label class="checkbox-row">
+      <input type="checkbox" id="dlImages"/>
+      Download images to disk
+    </label>
+
+    <button class="btn btn-primary" id="crawlBtn" onclick="startCrawl()">
+      <span class="spinner" id="spin"></span>
+      <span id="btnTxt">▶ RUN CRAWLER</span>
+    </button>
+
+    <button class="btn btn-ghost" onclick="loadResults()">↻ REFRESH RESULTS</button>
+    <button class="btn btn-ghost" onclick="loadLogs()">📋 LOAD LOGS</button>
+
+    <div class="section-label" style="margin-top:32px">Cron Schedule</div>
+    <div style="font-size:0.75rem; color:var(--muted); line-height:1.8;">
+      Set in <span style="color:var(--green)">.env</span><br/>
+      <code style="color:var(--yellow)">CRON_SCHEDULE=0 0 * * *</code><br/>
+      (daily midnight)<br/><br/>
+      Or install via:<br/>
+      <code style="color:var(--green)">bash scripts/setup-cron.sh</code>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+
+    <!-- Stats -->
+    <div class="stats-row">
+      <div class="stat-card"><div class="val" id="s-total">0</div><div class="lbl">URLs Crawled</div></div>
+      <div class="stat-card"><div class="val" id="s-ok" style="color:var(--green)">0</div><div class="lbl">Succeeded</div></div>
+      <div class="stat-card"><div class="val" id="s-fail" style="color:var(--red)">0</div><div class="lbl">Failed</div></div>
+      <div class="stat-card"><div class="val" id="s-time">--</div><div class="lbl">Time (sec)</div></div>
+    </div>
+
+    <!-- Progress -->
+    <div class="progress-wrap" id="progress">
+      <div class="progress-label" id="prog-label">Crawling...</div>
+      <div class="progress-bar-bg"><div class="progress-bar" id="prog-bar" style="width:0%"></div></div>
+    </div>
+
+    <!-- Crawl Results -->
+    <div class="panel" id="results-panel" style="display:none">
+      <div class="panel-header">
+        CRAWL RESULTS
+        <span id="result-count" style="color:var(--muted);font-weight:400"></span>
+      </div>
+      <div class="panel-body">
+        <table>
+          <thead>
+            <tr>
+              <th>URL</th><th>Title</th><th>Links</th><th>Images</th><th>Paragraphs</th><th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="result-rows"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Saved Files -->
+    <div class="panel" id="files-panel">
+      <div class="panel-header">SAVED OUTPUT FILES</div>
+      <div class="panel-body">
+        <table>
+          <thead><tr><th>File</th><th>Type</th><th>Size</th><th>Created</th><th>Download</th></tr></thead>
+          <tbody id="file-rows"><tr><td colspan="5" style="color:var(--muted);text-align:center;padding:20px">No files yet — run a crawl</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Terminal Log -->
+    <div class="panel">
+      <div class="panel-header">ACTIVITY LOG</div>
+      <div class="terminal" id="terminal">Waiting for crawl...</div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  function log(msg, type = 'inf') {
+    const t   = document.getElementById('terminal');
+    const ts  = new Date().toLocaleTimeString();
+    const cls = type === 'ok' ? 'ok' : type === 'err' ? 'err' : 'inf';
+    t.innerHTML += `<span class="ts">[${ts}]</span> <span class="${cls}">${msg}</span>\n`;
+    t.scrollTop = t.scrollHeight;
+  }
+
+  async function startCrawl() {
+    const btn   = document.getElementById('crawlBtn');
+    const spin  = document.getElementById('spin');
+    const txt   = document.getElementById('btnTxt');
+    const prog  = document.getElementById('progress');
+    const bar   = document.getElementById('prog-bar');
+    const label = document.getElementById('prog-label');
+
+    const rawUrls = document.getElementById('urls').value.trim();
+    const urls    = rawUrls.split('\n').map(u => u.trim()).filter(Boolean);
+    const dlImg   = document.getElementById('dlImages').checked;
+
+    if (!urls.length) { log('ERROR: No URLs entered', 'err'); return; }
+
+    btn.disabled = true;
+    spin.classList.add('on');
+    txt.textContent = 'CRAWLING...';
+    prog.classList.add('on');
+    bar.style.width = '10%';
+    label.textContent = `Crawling ${urls.length} URL(s)...`;
+
+    log(`Starting crawl: ${urls.join(', ')}`, 'inf');
+
+    // Animate bar
+    let pct = 10;
+    const ticker = setInterval(() => {
+      pct = Math.min(pct + 5, 90);
+      bar.style.width = pct + '%';
+    }, 800);
+
+    try {
+      const res  = await fetch('/api/crawl', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ urls, downloadImages: dlImg }),
+      });
+      const data = await res.json();
+
+      clearInterval(ticker);
+      bar.style.width = '100%';
+
+      // Update stats
+      document.getElementById('s-total').textContent = data.totalUrls;
+      document.getElementById('s-ok').textContent    = data.succeeded;
+      document.getElementById('s-fail').textContent  = data.failed;
+      document.getElementById('s-time').textContent  = data.elapsedSec + 's';
+
+      // Show result rows
+      if (data.outputs?.json) {
+        const fullData = await (await fetch(data.outputs.json.replace('./data', '/data'))).json().catch(() => null);
+        if (fullData?.results) renderResultRows(fullData.results);
+      }
+
+      log(`✅ Done: ${data.succeeded}/${data.totalUrls} in ${data.elapsedSec}s`, 'ok');
+      if (data.failed > 0) {
+        data.errors?.forEach(e => log(`❌ ${e.url}: ${e.error}`, 'err'));
+      }
+
+      await loadResults();
+    } catch (err) {
+      clearInterval(ticker);
+      log(`ERROR: ${err.message}`, 'err');
+    } finally {
+      btn.disabled = false;
+      spin.classList.remove('on');
+      txt.textContent = '▶ RUN CRAWLER';
+      setTimeout(() => { prog.classList.remove('on'); bar.style.width = '0%'; }, 1500);
+    }
+  }
+
+  function renderResultRows(results) {
+    const panel = document.getElementById('results-panel');
+    const tbody = document.getElementById('result-rows');
+    const count = document.getElementById('result-count');
+
+    panel.style.display = 'block';
+    count.textContent   = `${results.length} pages`;
+
+    tbody.innerHTML = results.map(r => `
+      <tr>
+        <td class="url-cell" title="${r.url}">${r.url}</td>
+        <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.title || '—'}</td>
+        <td><span class="tag tag-blue">${r.stats?.linkCount || 0}</span></td>
+        <td><span class="tag tag-blue">${r.stats?.imageCount || 0}</span></td>
+        <td><span class="tag tag-blue">${r.stats?.paragraphCount || 0}</span></td>
+        <td><span class="tag tag-green">✓ OK</span></td>
+      </tr>
+    `).join('');
+  }
+
+  async function loadResults() {
+    try {
+      const data = await (await fetch('/api/results')).json();
+      const rows = [
+        ...data.json.map(f => ({ ...f, type: 'JSON' })),
+        ...data.csv.map(f => ({ ...f, type: 'CSV' })),
+      ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+      const tbody = document.getElementById('file-rows');
+      if (!rows.length) {
+        tbody.innerHTML = `<tr><td colspan="5" style="color:var(--muted);text-align:center;padding:20px">No files yet</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = rows.map(r => `
+        <tr>
+          <td style="color:var(--text)">${r.file}</td>
+          <td><span class="tag ${r.type === 'JSON' ? 'tag-blue' : 'tag-green'}">${r.type}</span></td>
+          <td style="color:var(--muted)">${r.sizeKB} KB</td>
+          <td style="color:var(--muted);font-size:0.72rem">${new Date(r.createdAt).toLocaleString()}</td>
+          <td><a class="dl" href="${r.url}" target="_blank">⬇ Download</a></td>
+        </tr>
+      `).join('');
+    } catch (err) {
+      log(`Failed to load results: ${err.message}`, 'err');
+    }
+  }
+
+  async function loadLogs() {
+    try {
+      const data = await (await fetch('/api/logs?lines=50')).json();
+      const t    = document.getElementById('terminal');
+      t.innerHTML = '';
+      (data.lines || []).forEach(line => {
+        const cls = line.includes('ERROR') ? 'err' : line.includes('✅') ? 'ok' : 'inf';
+        t.innerHTML += `<span class="${cls}">${line}</span>\n`;
+      });
+      t.scrollTop = t.scrollHeight;
+      log(`Loaded ${data.lines?.length || 0} log lines from ${data.file}`, 'ok');
+    } catch (err) {
+      log(`Failed to load logs: ${err.message}`, 'err');
+    }
+  }
+
+  // Auto-load results on page ready
+  loadResults();
+</script>
+</body>
+</html>
