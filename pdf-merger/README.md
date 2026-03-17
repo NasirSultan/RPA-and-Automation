@@ -1,4 +1,7 @@
-# 📄 PDF Merger — Quest 2
+#  PDF Merger — Quest 2
+
+[ Watch Demo Video](https://vimeo.com/1173636749?share=copy&fl=sv&fe=ci)
+----
 
 Merges two PDFs into one via a simple Express REST API.
 
@@ -39,7 +42,7 @@ form-data:
 ```json
 {
   "success": true,
-  "message": "✅ Merged 10 + 3 = 13 pages",
+  "message": "Merged 10 + 3 = 13 pages",
   "output": {
     "filename": "merged_final.pdf",
     "url": "/outputs/merged_final.pdf",
@@ -48,7 +51,7 @@ form-data:
   },
   "performance": {
     "elapsedMs": 187,
-    "status": "🏆 Under 1 second"
+    "status": "Under 1 second"
   }
 }
 ```
