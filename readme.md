@@ -7,6 +7,7 @@ Node.js solutions for all 4 automation quests.
 ## Table of Contents
 
 - [Quest 1 - RPA PDF Crawling](#quest-1--rpa-pdf-crawling)
+-  [Watch Loom Video - RPA PDF Crawler](https://vimeo.com/1173636804?share=copy&fl=sv&fe=ci)
 - [Quest 2 - Merging PDFs](#quest-2--merging-pdfs)
 - [Quest 3 - PDF Translation](#quest-3--pdf-translation-korean-to-english)
 - [Quest 4 - Linux Web Crawling](#quest-4--linux-web-crawling)
@@ -15,7 +16,7 @@ Node.js solutions for all 4 automation quests.
 
 ## Quest 1 - RPA PDF Crawling
 
-[Watch Loom Video - RPA PDF Crawler](https://vimeo.com/1173636804?share=copy&fl=sv&fe=ci)
+
 
 ---
 
