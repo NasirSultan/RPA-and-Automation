@@ -1,6 +1,6 @@
 #  PDF Merger — Quest 2
 
-[ Watch Demo Video](https://vimeo.com/1173636749?share=copy&fl=sv&fe=ci)
+[ Loom Video](https://vimeo.com/1173636749?share=copy&fl=sv&fe=ci)
 ----
 
 Merges two PDFs into one via a simple Express REST API.
