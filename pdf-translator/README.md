@@ -1,6 +1,6 @@
 #  PDF Translator — Korean → English
 
-[ Watch Demo Video](https://vimeo.com/1173636781?share=copy&fl=sv&fe=ci)
+[ Loom Video](https://vimeo.com/1173636781?share=copy&fl=sv&fe=ci)
 ----
 
 Translates Korean PDFs to English using **4 parallel GPT-4o workers**.
